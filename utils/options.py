@@ -15,7 +15,8 @@ class options(object):
         # Training
         self.parser.add_argument('--batch_size', type=int, default=64, help='batch size')
         self.parser.add_argument('--project_root', type=str, default='', help='Path to root of the project')
-        self.parser.add_argument('--data_root', type=str, default='',help='Path to the root of dataset')
+        self.parser.add_argument('--data_dir', type=str, default='datasets/VOC2012',help='Path to the dataset')
+        self.parser.add_argument('--split', type=str, default='train',help='Type of split for the dataset')
         self.parser.add_argument('--train', action='store_true', help='Train / test')
         self.parser.add_argument('--max_epochs', type=int, default=1000, help='Number of epochs to train the model')
         self.parser.add_argument('--img_h', type=int, default=224, help='Image hieght')
