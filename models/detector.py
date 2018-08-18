@@ -39,7 +39,7 @@ class _FasterRCNNVGG16:
     def __init__(self, opts):
         self.model = FasterRCNNVGG16(
             n_fg_class=opts['n_classes'],
-            pretrained_model=opts.pretrained_model)
+            pretrained_model=opts['pretrained_model'])
 
     def predict(self, imgs):
         bboxes, labels, scores = self.model.predict(imgs)
@@ -49,7 +49,7 @@ class _SSD300:
     def __init__(self, opts):
         self.model = SSD300(
             n_fg_class=opts['n_classes'],
-            pretrained_model=opts.pretrained_model)
+            pretrained_model=opts['pretrained_model'])
 
     def predict(self, imgs):
         bboxes, labels, scores = self.model.predict(imgs)
@@ -59,7 +59,7 @@ class _SSD512:
     def __init__(self, opts):
         self.model = SSD512(
             n_fg_class=opts['n_classes'],
-            pretrained_model=opts.pretrained_model)
+            pretrained_model=opts['pretrained_model'])
 
     def predict(self, imgs):
         bboxes, labels, scores = self.model.predict(imgs)
@@ -68,11 +68,11 @@ class _SSD512:
 class _YOLOv2:
     def __init__(self, opts):
         self.pretrained_models = ('voc0712', )
-        assert opts.pretrained_model in self.pretrained_models, "{} pretrained model doesn't exist".format(opts.pretrained_model)
+        assert opts['pretrained_model'] in self.pretrained_models, "{} pretrained model doesn't exist".format(opts.pretrained_model)
 
         self.model = YOLOv2(
             n_fg_class=opts['n_classes'],
-            pretrained_model=opts.pretrained_model)
+            pretrained_model=opts['pretrained_model'])
 
     def predict(self, imgs):
         bboxes, labels, scores = self.model.predict(imgs)
@@ -81,11 +81,11 @@ class _YOLOv2:
 class _YOLOv3:
     def __init__(self, opts):
         self.pretrained_models = ('voc0712', )
-        assert opts.pretrained_model in self.pretrained_models, "{} pretrained model doesn't exist".format(opts.pretrained_model)
+        assert opts['pretrained_model'] in self.pretrained_models, "{} pretrained model doesn't exist".format(opts.pretrained_model)
 
         self.model = YOLOv3(
             n_fg_class=opts['n_classes'],
-            pretrained_model=opts.pretrained_model)
+            pretrained_model=opts['pretrained_model'])
 
     def predict(self, imgs):
         bboxes, labels, scores = self.model.predict(imgs)

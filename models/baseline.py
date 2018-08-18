@@ -16,13 +16,13 @@ class Baseline:
             self.detector_name,
             self.n_classes,
             self.pretrained_model,
-            self.opts.gpu_id
+            self.opts['gpu_id']
             )
         self.visualizer = Visualize(opts['label_names'])
     
     def predict_single(self, img):
         bboxes, labels, scores = self.detector.predict([img])
-        self.visualizer(img, bboxes, labels, scores)
+        self.visualizer(img, bboxes[0], labels[0], scores[0])
 
     def predict(self, imgs):
         pass
