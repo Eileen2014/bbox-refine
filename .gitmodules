@@ -1,0 +1,3 @@
+[submodule "external/superpixels-revisited"]
+	path = external/superpixels-revisited
+	url = https://github.com/davidstutz/superpixels-revisited.git
