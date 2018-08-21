@@ -34,12 +34,12 @@ class voc_loader:
         masks = np.array([contours == idx for idx in range(min_region, max_region+1, 1)])
         boxes = get_tightest_bboxes(masks)
 
-        return masks, boxes
+        return contours, masks, boxes
 
     def load_single(self, idx):
         img, bbox, labels = self.loader.get_example(idx)
-        masks, boxes = self.get_superpixels(idx)
-        return (img, bbox, labels, masks, boxes)
+        contours, masks, boxes = self.get_superpixels(idx)
+        return (img, bbox, labels, contours, masks, boxes)
 
     def load_batch(self, start_idx, end_idx):
         pass

@@ -84,8 +84,10 @@ class Baseline:
             for idx, s_mask in enumerate(Sst):
                 union_masks[idx] = np.bitwise_or(Sin, s_mask)
             union_bboxes = mask_to_bbox(union_masks)
-            IoU = bbox_iou(union_bboxes, np.array([bbox]))
-            order = np.argsort(IoU, axis=0)[::-1][0]
+            IoU = np.squeeze(bbox_iou(union_bboxes, np.array([bbox])))
+            order = np.argsort(IoU, axis=0)[::-1]
+            print('>> >> >> ')
+            print(IoU[order][:20])
             _Sst.append(Sst[order])
         return _Sst
 
@@ -114,6 +116,7 @@ class Baseline:
                 new_S = np.bitwise_or(S, sk)
                 IoU_old = bbox_iou(mask_to_bbox(np.array([S])), np.array([bbox]))
                 IoU_new = bbox_iou(mask_to_bbox(np.array([new_S])), np.array([bbox]))
+                print('IoU old: {} IoU new: {}'.format(IoU_old, IoU_new))
                 if IoU_old > IoU_new:
                     break
                 S = new_S
@@ -127,17 +130,16 @@ class Baseline:
 
     def predict(self, inputs=None):
         if inputs is None:
-            img, bboxes, labels, masks, boxes = self.loader.load_single(0)
+            img, bboxes, labels, contours, masks, boxes = self.loader.load_single(0)
         else:
-            img, bboxes, labels, masks, boxes = inputs
-      
+            img, bboxes, labels, contours, masks, boxes = inputs
+ 
         # bboxes = self.deform_bboxes(bboxes, img.shape)
         bboxes[1][0] += 25
         bboxes[1][1] += 40
         bboxes[1][2] -= 40
         bboxes[1][3] -= 40
-      
-        print(bboxes.shape)
+ 
         bboxes = [bboxes[1]]
         labels = [labels[1]]
         final_bboxes, final_masks = self.box_alignment(img, bboxes, masks, boxes)
@@ -145,12 +147,11 @@ class Baseline:
         print(bboxes)
         print('After box alignment')
         print(final_bboxes)
-        self.visualizer.box_alignment(img, bboxes, final_bboxes, final_masks)
-
+        self.visualizer.box_alignment(img, bboxes, final_bboxes, final_masks, contours)
 
     def predict_all(self, inputs=None):
         for idx in range(self.loader.len()):
-            img, bboxes, labels, masks, boxes = self.loader.load_single(idx)
+            img, bboxes, labels, contours, masks, boxes = self.loader.load_single(idx)
             
             bboxes = self.deform_bboxes(bboxes, img.shape)
             final_bboxes, final_masks = self.box_alignment(img, bboxes, masks, boxes)
@@ -159,7 +160,7 @@ class Baseline:
             print('After box alignment')
             print(final_bboxes)
             img_file = os.path.join('/home/avisek/kv/bbox_refine/test/', self.loader.ids[idx])
-            self.visualizer.box_alignment(img, bboxes, final_bboxes, final_masks, save=True, path=img_file)
+            self.visualizer.box_alignment(img, bboxes, final_bboxes, final_masks, contours, save=True, path=img_file)
 
 if __name__ == '__main__':
     opts = options().parse(train_mode=False)

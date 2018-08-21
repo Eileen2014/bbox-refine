@@ -32,7 +32,7 @@ class Visualize:
                 )
 
     def box_alignment(self, img, old_boxes, new_boxes, Spixels,
-                      save=False, path=None
+                      contours, save=False, path=None
                       ):
         """ Visualize the change in the bboxes after box alignment
 
@@ -43,15 +43,22 @@ class Visualize:
             Spixels  : set of superpixels
         """
         fig = plt.figure(figsize=(16, 7))
-        ax1 = fig.add_subplot(121)
-        plt.xticks([])
-        plt.yticks([])
+        ax1 = fig.add_subplot(131)
+        # plt.xticks([])
+        # plt.yticks([])
+        plt.title('Superpixels')
+        plt.imshow(contours)
+        # plt.imshow(contours[50:150, 150:300])
+
+        ax1 = fig.add_subplot(132)
+        # plt.xticks([])
+        # plt.yticks([])
         plt.title('Original box')
         vis_bbox(img, old_boxes, ax=ax1)
 
-        ax2 = fig.add_subplot(122)
-        plt.xticks([])
-        plt.yticks([])
+        ax2 = fig.add_subplot(133)
+        # plt.xticks([])
+        # plt.yticks([])
         plt.title('After box-alignment')
         vis_bbox(img, new_boxes, ax=ax2)
         for spixel in Spixels:
