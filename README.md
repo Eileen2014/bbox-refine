@@ -12,9 +12,21 @@
 - Chainer
 - ChainerCV
 
-# Expeimental Results
+# Experimental Results
+Some qualitative results after applying bbox-alignment step, (quantitative coming soon...)
 <figure>
-    <img src="imgs/refine.png" alt='missing' align="center" />
-    <figcaption>Result after box alignment</figcaption>
-</figure>
+    <img src="imgs/refine1.png" alt='missing' align="center" />
+/figure>
+<figure>
+    <img src="imgs/refine2.png" alt='missing' align="center" />
+/figure>
+<figure>
+    <img src="imgs/refine3.png" alt='missing' align="center" />
+/figure>
+<figure>
+    <img src="imgs/refine4.png" alt='missing' align="center" />
+/figure>
+<figure>
+    <img src="imgs/refine5.png" alt='missing' align="center" />
+/figure>
 
