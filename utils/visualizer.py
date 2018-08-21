@@ -36,7 +36,6 @@ class Visualize:
                       ):
         """ Visualize the change in the bboxes after box alignment
 
-        TODO: Add superpixels belonging to each updated box
         Args:
             img      : Input image
             old_boxes: Old bboxes
@@ -55,9 +54,13 @@ class Visualize:
         plt.yticks([])
         plt.title('After box-alignment')
         vis_bbox(img, new_boxes, ax=ax2)
+        for spixel in Spixels:
+            plt.imshow(spixel, cmap='gray', alpha=0.5, interpolation='none')
         if save:
             if path is None:
                 raise ValueError('Path should be set')
             plt.savefig(path)
         else:
             plt.show()
+        plt.close(fig)
+

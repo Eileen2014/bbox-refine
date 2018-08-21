@@ -24,6 +24,7 @@ class options(object):
         self.parser.add_argument('--gpu_id', type=int, default=-1, help='GPU id')
         self.parser.add_argument('--dataset', type=str, default='voc', help='Dataset to use')
         self.parser.add_argument('--detector', type=str, default='faster_rcnn', help='bbox detector')
+        self.parser.add_argument('--super_type', type=str, default='', help='Type of superpixels to be used')
         self.parser.add_argument('--pretrained_model', type=str, default='voc0712', help='pretrained model')
         self.parser.add_argument('--n_classes', type=int, default=21, help='Number of fore-ground classes')
         self.parser.add_argument('--ckpt_frq', type=int, default=10, help='Checkpoint frequency (in epochs)')
@@ -47,7 +48,7 @@ class options(object):
         }
 
         assert self.opts['dataset'] in self.opts['datasets'], "{} dataset doesn't exist".format(self.opts['dataset'])
-        assert self.opts['detector'] in self.opts['detectors'], "{} dataset doesn't exist".format(self.opts['detector'])
+        assert self.opts['detector'] in self.opts['detectors'], "{} detector doesn't exist".format(self.opts['detector'])
 
         self.opts.update({'label_names': names_map[self.opts['dataset']]})
         self.opts.update({'n_classes': len(self.opts['label_names'])})

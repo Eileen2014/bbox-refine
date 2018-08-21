@@ -18,9 +18,9 @@ class Baseline:
         self.n_classes        = opts['n_classes']
         self.pretrained_model = opts['pretrained_model']
         self.detector_name    = opts['detector']
-        self.data_dir         = os.path.join(opts['project_root'], opts['data_dir'])
+        self.data_dir         = os.path.join(opts['project_root'], '..', opts['data_dir'])
         self.split            = opts['split']
-        self.super_root       = os.path.join(opts['project_root'], opts['data_dir'], opts['super_type'])
+        self.super_root       = os.path.join(opts['project_root'], '..', opts['data_dir'], 'superpixels', opts['super_type'])
 
         self.detector = Detector(
             self.detector_name,
@@ -31,6 +31,39 @@ class Baseline:
         self.visualizer = Visualize(opts['label_names'])
         self.loader = voc_loader(data_dir=self.data_dir, split=self.split, super_root=self.super_root)
 
+    def box_to_mask(self, box, size):
+        """Convert box co-ordinates into a mask"""
+        H, W = size
+        mask_img = np.zeros((H, W), dtype=np.bool)
+        y_min, x_min, y_max, x_max = box.astype(np.int32)
+        # FIXME: Should be adding `y_max+1` here?
+        mask_img[y_min:y_max, x_min:x_max] = True
+        return mask_img
+
+    def deform_bboxes(self, bboxes, size):
+        _, H, W = size
+        new_boxes = np.empty_like(bboxes, dtype=bboxes.dtype)
+        for idx, bbox in enumerate(bboxes):
+            y_min, x_min, y_max, x_max = bbox
+            if y_min < 20:
+                y_min += np.random.randint(5, 20)
+            else:
+                y_min -= np.random.randint(5, 20)
+            if x_min < 20:
+                x_min += np.random.randint(5, 20)
+            else:
+                x_min -= np.random.randint(5, 20)
+            if y_max > H - 20:
+                y_max -= np.random.randint(5, 20)
+            else:
+                y_max += np.random.randint(5, 20)
+            if x_max > W - 20:
+                x_max -= np.random.randint(5, 20)
+            else:
+                x_max += np.random.randint(5, 20)
+            new_boxes[idx] = [y_min, x_min, y_max, x_max]
+        return new_boxes
+
     def SD_metric(self, bbox, masks, stype=0):
         _s_in, _s_st = [], []
         for mask in masks:
@@ -40,7 +73,8 @@ class Baseline:
                 _s_in.append(mask)
             elif ratio < 1:
                 _s_st.append(mask)
-        return np.array(_s_in), np.array(_s_st)
+        _s_in = np.sum(np.array(_s_in), axis=0)
+        return _s_in, np.array(_s_st)
 
     def rebase_Sst(self, S_in, S_st, bboxes):
         _Sst = []
@@ -50,15 +84,17 @@ class Baseline:
             for idx, s_mask in enumerate(Sst):
                 union_masks[idx] = np.bitwise_or(Sin, s_mask)
             union_bboxes = mask_to_bbox(union_masks)
-            IoU = bbox_iou(union_bboxes, bbox)
-            order = np.argsort(IoU, axis=0)[::-1]
+            IoU = bbox_iou(union_bboxes, np.array([bbox]))
+            order = np.argsort(IoU, axis=0)[::-1][0]
             _Sst.append(Sst[order])
         return _Sst
 
-    def get_initial_sets(self, bboxes, masks, boxes):
+    def get_initial_sets(self, img, bboxes, masks, boxes):
+        C, H, W = img.shape 
         S_in, S_st = [], []
         for box in bboxes:
-            _s_in, _s_st = self.SD_metric(box, masks, stype=-1)
+            box_mask = self.box_to_mask(box, (H, W))
+            _s_in, _s_st = self.SD_metric(box_mask, masks, stype=-1)
             S_in.append(_s_in)
             S_st.append(_s_st) 
         return S_in, S_st
@@ -67,35 +103,68 @@ class Baseline:
         bboxes, labels, scores = self.detector.predict([img])
         self.visualizer(img, bboxes[0], labels[0], scores[0])
 
-    def box_alignment(self, bboxes, masks, boxes):
-        S_in, S_st = self.get_initial_sets(bboxes, masks, boxes)
+    def box_alignment(self, img, bboxes, masks, boxes):
+        S_in, S_st = self.get_initial_sets(img, bboxes, masks, boxes)
         S_st = self.rebase_Sst(S_in, S_st, bboxes)
         final_boxes = []
         final_masks = []
-        for bbox, Sin, Sst in zip(bboxes, Sin, S_st):
+        for bbox, Sin, Sst in zip(bboxes, S_in, S_st):
             S = Sin
             for sk in Sst:
                 new_S = np.bitwise_or(S, sk)
-                IoU_old = bbox_iou(mask_to_bbox(np.array([S])), bbox)
-                IoU_new = bbox_iou(mask_to_bbox(np.array([new_S])), bbox)
+                IoU_old = bbox_iou(mask_to_bbox(np.array([S])), np.array([bbox]))
+                IoU_new = bbox_iou(mask_to_bbox(np.array([new_S])), np.array([bbox]))
                 if IoU_old > IoU_new:
                     break
                 S = new_S
             final_masks.append(S)
-            final_boxes.append(mask_to_bbox(np.array([S])))
+            final_boxes.append(mask_to_bbox(np.array([S]))[-1])
+        final_masks, final_boxes = np.array(final_masks), np.array(final_boxes) 
         return final_boxes, final_masks
 
     def multi_thresholding_superpixel_merging(self):
         pass
 
-    def predict(self, inputs):
-        img, bboxes, labels, masks, boxes = inputs
-        final_bboxes, final_masks = self.box_alignment(bboxes, masks, boxes)
+    def predict(self, inputs=None):
+        if inputs is None:
+            img, bboxes, labels, masks, boxes = self.loader.load_single(0)
+        else:
+            img, bboxes, labels, masks, boxes = inputs
+      
+        # bboxes = self.deform_bboxes(bboxes, img.shape)
+        bboxes[1][0] += 25
+        bboxes[1][1] += 40
+        bboxes[1][2] -= 40
+        bboxes[1][3] -= 40
+      
+        print(bboxes.shape)
+        bboxes = [bboxes[1]]
+        labels = [labels[1]]
+        final_bboxes, final_masks = self.box_alignment(img, bboxes, masks, boxes)
+        print('Initial boxes')
+        print(bboxes)
+        print('After box alignment')
+        print(final_bboxes)
         self.visualizer.box_alignment(img, bboxes, final_bboxes, final_masks)
 
+
+    def predict_all(self, inputs=None):
+        for idx in range(self.loader.len()):
+            img, bboxes, labels, masks, boxes = self.loader.load_single(idx)
+            
+            bboxes = self.deform_bboxes(bboxes, img.shape)
+            final_bboxes, final_masks = self.box_alignment(img, bboxes, masks, boxes)
+            print('Initial boxes')
+            print(bboxes)
+            print('After box alignment')
+            print(final_bboxes)
+            img_file = os.path.join('/home/avisek/kv/bbox_refine/test/', self.loader.ids[idx])
+            self.visualizer.box_alignment(img, bboxes, final_bboxes, final_masks, save=True, path=img_file)
 
 if __name__ == '__main__':
     opts = options().parse(train_mode=False)
     baseline = Baseline(opts)
-    img = read_image('../utils/imgs/sample.jpg')
-    baseline.predict_single(img)
+    # img = read_image('../utils/imgs/sample.jpg')
+    # baseline.predict_single(img)
+    # baseline.predict_all()
+    baseline.predict()
