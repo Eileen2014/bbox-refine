@@ -2,6 +2,7 @@ from models.detector import Detector
 from utils.visualizer import Visualize
 from utils.options import options
 from utils.voc_loader import voc_loader
+from utils.common import mkdirs
 
 from chainercv.utils import read_image
 from chainercv.utils import mask_iou
@@ -9,6 +10,8 @@ from chainercv.utils import bbox_iou
 from chainercv.utils import mask_to_bbox
 
 import os
+import pickle
+import sys
 import numpy as np
 
 class Baseline:
@@ -20,6 +23,8 @@ class Baseline:
         self.detector_name    = opts['detector']
         self.data_dir         = os.path.join(opts['project_root'], '..', opts['data_dir'])
         self.split            = opts['split']
+        self.super_type       = opts['super_type']
+        self.logs_root        = opts['logs_root']
         self.super_root       = os.path.join(opts['project_root'], '..', opts['data_dir'], 'superpixels', opts['super_type'])
 
         self.detector = Detector(
@@ -72,8 +77,8 @@ class Baseline:
             if ratio == 1:
                 _s_in.append(mask)
             elif ratio < 1:
-                _s_st.append(mask)
-        _s_in = np.sum(np.array(_s_in), axis=0)
+                _s_st.append(mask.astype(np.bool))
+        _s_in = np.sum(np.array(_s_in), axis=0).astype(np.bool)
         return _s_in, np.array(_s_st)
 
     def rebase_Sst(self, S_in, S_st, bboxes):
@@ -86,8 +91,6 @@ class Baseline:
             union_bboxes = mask_to_bbox(union_masks)
             IoU = np.squeeze(bbox_iou(union_bboxes, np.array([bbox])))
             order = np.argsort(IoU, axis=0)[::-1]
-            print('>> >> >> ')
-            print(IoU[order][:20])
             _Sst.append(Sst[order])
         return _Sst
 
@@ -107,16 +110,18 @@ class Baseline:
 
     def box_alignment(self, img, bboxes, masks, boxes):
         S_in, S_st = self.get_initial_sets(img, bboxes, masks, boxes)
+
         S_st = self.rebase_Sst(S_in, S_st, bboxes)
         final_boxes = []
         final_masks = []
         for bbox, Sin, Sst in zip(bboxes, S_in, S_st):
             S = Sin
+            if S.ndim == 0:
+                continue
             for sk in Sst:
                 new_S = np.bitwise_or(S, sk)
                 IoU_old = bbox_iou(mask_to_bbox(np.array([S])), np.array([bbox]))
                 IoU_new = bbox_iou(mask_to_bbox(np.array([new_S])), np.array([bbox]))
-                print('IoU old: {} IoU new: {}'.format(IoU_old, IoU_new))
                 if IoU_old > IoU_new:
                     break
                 S = new_S
@@ -143,29 +148,42 @@ class Baseline:
         bboxes = [bboxes[1]]
         labels = [labels[1]]
         final_bboxes, final_masks = self.box_alignment(img, bboxes, masks, boxes)
-        print('Initial boxes')
-        print(bboxes)
-        print('After box alignment')
-        print(final_bboxes)
-        self.visualizer.box_alignment(img, bboxes, final_bboxes, final_masks, contours)
+        img_file = os.path.join('/home/avisek/kv/bbox_refine/test/23')
+        self.visualizer.box_alignment(img, bboxes, final_bboxes, final_masks, contours, path=img_file)
 
     def predict_all(self, inputs=None):
+        metrics = {}
         for idx in range(self.loader.len()):
+
+            # Progress bar
+            done_l = (idx+1.0) / self.loader.len()
+            per_done = int(done_l * 30)
+            args = ['='*per_done, ' '*(30-per_done-1), done_l*100]
+            sys.stdout.write('\r')
+            sys.stdout.write('[{}>{}]{:.0f}%'.format(*args))
+            sys.stdout.flush()
+
             img, bboxes, labels, contours, masks, boxes = self.loader.load_single(idx)
-            
-            bboxes = self.deform_bboxes(bboxes, img.shape)
             final_bboxes, final_masks = self.box_alignment(img, bboxes, masks, boxes)
-            print('Initial boxes')
-            print(bboxes)
-            print('After box alignment')
-            print(final_bboxes)
-            img_file = os.path.join('/home/avisek/kv/bbox_refine/test/', self.loader.ids[idx])
-            self.visualizer.box_alignment(img, bboxes, final_bboxes, final_masks, contours, save=True, path=img_file)
+
+            p_bboxes, p_labels, p_scores = self.detector.predict([img])
+            p_bboxes = p_bboxes[0] # TODO: Not yet optimized for batch processing
+            # Store the results in a file
+            metrics.update({'{}'.format(self.loader.ids[idx]): [bboxes, p_bboxes, final_bboxes]})
+            img_file = os.path.join(self.opts['project_root'], 'logs', self.logs_root, 'qualitative', str(self.loader.ids[idx]))
+            self.visualizer.box_alignment(img, p_bboxes, final_bboxes, final_masks, contours, save=True, path=img_file)
+        with open('/home/avisek/kv/bbox_refine/logs/{}/metrics.list'.format(
+            self.detector_name, self.super_type, self.logs_root), 'wb') as f:
+            pickle.dump(metrics, f)
 
 if __name__ == '__main__':
     opts = options().parse(train_mode=False)
+    req_dirs = [
+            os.path.join(opts['project_root'], 'logs', opts['logs_root'],  'qualitative')
+                ]
+    mkdirs(req_dirs)
     baseline = Baseline(opts)
     # img = read_image('../utils/imgs/sample.jpg')
     # baseline.predict_single(img)
-    # baseline.predict_all()
-    baseline.predict()
+    baseline.predict_all()
+    # baseline.predict()

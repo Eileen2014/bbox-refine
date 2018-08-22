@@ -38,6 +38,7 @@ def get_tightest_bbox(mask):
         slice_y, slice_x = ndimage.find_objects(mask > 0)[0]
     except IndexError:
         print('No mask at all? Weird')
+        return -1
     y_min, y_max = slice_y.start, slice_y.stop
     x_min, x_max = slice_x.start, slice_x.stop
 
@@ -46,5 +47,11 @@ def get_tightest_bbox(mask):
 def get_tightest_bboxes(masks):
     boxes = np.zeros((len(masks), 4))
     for idx, mask in enumerate(masks):
-        boxes[idx] = get_tightest_bbox(mask)
+        bbox = get_tightest_bbox(mask)
+        if isinstance(bbox, int):
+            # FIXME: Shouldn't be happening? Check back later on
+            continue
+        else:
+            boxes[idx] = get_tightest_bbox(mask)
     return boxes
+

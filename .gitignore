@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 *.json
 
+# Local logs/files
+logs/**
+test/**
+
 # C extensions
 *.so
 

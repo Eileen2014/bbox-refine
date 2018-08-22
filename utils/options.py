@@ -53,6 +53,9 @@ class options(object):
         self.opts.update({'label_names': names_map[self.opts['dataset']]})
         self.opts.update({'n_classes': len(self.opts['label_names'])})
 
+        # Some directories
+        self.opts.update({'logs_root': 'Detector-{}_SuperType-{}'.format(self.opts['detector'], self.opts['super_type'])})
+
     def parse(self, train_mode=False):
         if not self.initialized:
             self.initialize()
