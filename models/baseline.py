@@ -97,12 +97,14 @@ class Baseline:
             S = Sin
             if S.ndim == 0:
                 continue
+            proc = 0 
             for sk in Sst:
                 new_S = np.bitwise_or(S, sk)
-                IoU_old = bbox_iou(mask_to_bbox(np.array([S])), np.array([bbox]))
-                IoU_new = bbox_iou(mask_to_bbox(np.array([new_S])), np.array([bbox]))
+                IoU_old = bbox_iou(mask_to_bbox(np.array([S])), np.array([bbox]))[0][0]
+                IoU_new = bbox_iou(mask_to_bbox(np.array([new_S])), np.array([bbox]))[0][0]
                 if IoU_old > IoU_new:
                     break
+                proc += 1
                 S = new_S
             final_masks.append(S)
             final_boxes.append(mask_to_bbox(np.array([S]))[-1])
@@ -191,8 +193,8 @@ class Baseline:
 
     def predict_all(self, inputs=None):
         metrics = {}
+        print('Evaluating a total of {} images'.format(self.loader.len())) 
         for idx in range(self.loader.len()):
-
             # Progress bar
             done_l = (idx+1.0) / self.loader.len()
             per_done = int(done_l * 30)
@@ -201,15 +203,21 @@ class Baseline:
             sys.stdout.write('[{}>{}]{:.0f}%'.format(*args))
             sys.stdout.flush()
 
+            # Load images and ground truth stuff
             img, bboxes, labels, contours, masks, boxes = self.loader.load_single(idx)
-            final_bboxes, final_masks = self.box_alignment(img, bboxes, masks, boxes)
 
+            # Use the detector and predict bounding boxes
             p_bboxes, p_labels, p_scores = self.detector.predict([img])
-            p_bboxes = p_bboxes[0] # TODO: Not yet optimized for batch processing
+            p_bboxes = np.rint(p_bboxes[0])
+           
+            # Box-alignment
+            final_bboxes, final_masks = self.box_alignment(img, p_bboxes, masks, boxes)
+            
             # Store the results in a file
             metrics.update({'{}'.format(self.loader.ids[idx]): [p_bboxes, p_labels, p_scores, final_bboxes, bboxes, labels]})
             img_file = os.path.join(self.opts['project_root'], 'logs', self.logs_root, 'qualitative', str(self.loader.ids[idx]))
             self.visualizer.box_alignment(img, p_bboxes, final_bboxes, final_masks, contours, save=True, path=img_file)
+        
         with open('{}/logs/{}/metrics.list'.format(self.project_root, self.logs_root), 'wb') as f:
             pickle.dump(metrics, f)
 

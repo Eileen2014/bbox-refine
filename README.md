@@ -4,13 +4,14 @@
 **Todo**
 - [x] Box alignment
 - [x] Multi-thresholding superpixel merging
-- [ ] Quantitative Metric evaluation
+- [x] Quantitative Metric evaluation
 
 # Requirements
 - Ubuntu
 - Python 3
 - Chainer
 - ChainerCV
+- OpenCV
 
 # Usage
 - Clone the repository
