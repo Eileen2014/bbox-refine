@@ -183,7 +183,7 @@ class Baseline:
             final_masks, masks, boxes)
         mtsm_masks, mtsm_bboxes, _ = zip(*final_set.values())
         self.visualizer.mtsm(
-            img, bboxes, 
+            img, bboxes,
             final_bboxes, final_masks, contours,
             mtsm_bboxes,mtsm_masks, 
             save=False
@@ -207,7 +207,7 @@ class Baseline:
             p_bboxes, p_labels, p_scores = self.detector.predict([img])
             p_bboxes = p_bboxes[0] # TODO: Not yet optimized for batch processing
             # Store the results in a file
-            metrics.update({'{}'.format(self.loader.ids[idx]): [bboxes, p_bboxes, final_bboxes]})
+            metrics.update({'{}'.format(self.loader.ids[idx]): [p_bboxes, p_labels, p_scores, final_bboxes, bboxes, labels]})
             img_file = os.path.join(self.opts['project_root'], 'logs', self.logs_root, 'qualitative', str(self.loader.ids[idx]))
             self.visualizer.box_alignment(img, p_bboxes, final_bboxes, final_masks, contours, save=True, path=img_file)
         with open('{}/logs/{}/metrics.list'.format(self.project_root, self.logs_root), 'wb') as f:
@@ -220,7 +220,13 @@ if __name__ == '__main__':
                 ]
     mkdirs(req_dirs)
     baseline = Baseline(opts)
-    # img = read_image('../utils/imgs/sample.jpg')
-    # baseline.predict_single(img)
-    baseline.predict_all()
-    # baseline.predict()
+
+    if opts['demo']:
+        img = read_image('../utils/imgs/sample.jpg')
+        baseline.predict_single(img)
+    elif opts['evaluate']:
+        baseline.predict_all()
+    elif opts['benchmark']:
+        pass
+    else:
+        print('Option not recognized!')

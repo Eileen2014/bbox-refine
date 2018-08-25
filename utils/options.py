@@ -36,6 +36,11 @@ class options(object):
         self.parser.add_argument('--lr_start_epoch', type=int, default=400, help='No. of epochs to train with starting learning rate')
         self.parser.add_argument('--lr_decay_frq', type=int, default=200, help='Decay the learning rate after these many epochs linearly')
 
+        # Mode
+        self.parser.add_argument('--demo', action='store_true', help='Run a demo?')
+        self.parser.add_argument('--evaluate', action='store_true', help='Evaluate a model?')
+        self.parser.add_argument('--benchmark', action='store_true', help='Benchmark a model?')
+
     def update_opts(self):
         # Datasets
         self.opts.update({'datasets': ('voc', )})

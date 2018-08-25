@@ -20,6 +20,12 @@ def read_file(path):
 	lines = [path.strip() for path in lines]
 	return np.array(lines)
 
+def file_exists(path):
+    return os.path.exists(path)
+
+def join(pathlist):
+    return os.path.join(*pathlist)
+
 def log_config(flags, path):
 	""" Log the model configurations 
 	
