@@ -1,10 +1,12 @@
 from models.detector import Detector
 from utils.visualizer import Visualize
 from utils.options import options
-from utils.voc_loader import voc_loader
 from utils.common import mkdirs
 from utils.common import join
 from utils.common import get_superpixels
+
+from utils.voc_loader import voc_loader
+from utils.yto_loader import yto_loader
 
 from chainercv.utils import read_image
 from chainercv.utils import mask_iou
@@ -25,6 +27,7 @@ class Baseline:
         self.n_classes        = opts['n_classes']
         self.pretrained_model = opts['pretrained_model']
         self.detector_name    = opts['detector']
+        self.dataset_name     = opts['dataset']
         self.threshold        = opts['threshold']
         self.data_dir         = os.path.join(opts['project_root'], '..', opts['data_dir'])
         self.split            = opts['split']
@@ -41,7 +44,20 @@ class Baseline:
             self.opts['gpu_id']
             )
         self.visualizer = Visualize(opts['label_names'])
-        self.loader = voc_loader(data_dir=self.data_dir, split=self.split, super_root=self.super_root)
+        if self.dataset_name == 'voc':
+            self.loader = voc_loader(
+                data_dir=self.data_dir,
+                split=self.split,
+                super_root=self.super_root
+                )
+        elif self.dataset_name == 'yto':
+            self.loader = yto_loader(
+                data_dir=self.data_dir,
+                split=self.split,
+                super_root=self.super_root
+                )
+        else:
+            print('No such dataset exists')
 
     def is_valid_box(self, bbox_mask):
         """ Checks if the box is valid
