@@ -1,6 +1,8 @@
 import argparse
 import os
 
+from utils.common import join
+
 from datasets.voc import names as voc_names
 
 class options(object):
@@ -60,7 +62,8 @@ class options(object):
         self.opts.update({'n_classes': len(self.opts['label_names'])})
 
         # Some directories
-        self.opts.update({'logs_root': 'Detector-{}_SuperType-{}'.format(self.opts['detector'], self.opts['super_type'])})
+        logs_root = join([self.opts['project_root'], 'logs', 'Detector-{}_SuperType-{}'.format(self.opts['detector'], self.opts['super_type'])])
+        self.opts.update({'logs_root': logs_root})
 
     def parse(self, train_mode=False):
         if not self.initialized:

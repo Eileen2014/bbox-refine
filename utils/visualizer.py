@@ -7,7 +7,7 @@ class Visualize:
     def __init__(self, names):
         self.names = names
     
-    def __call__(self, img, bbox, label, score, save=False, path=None):
+    def __call__(self, img, bbox, label=None, score=None, save=False, path=None):
         vis_bbox(
             img, bbox, label, score, label_names=self.names
         )

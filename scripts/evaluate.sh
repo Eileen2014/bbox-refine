@@ -1,13 +1,12 @@
 #!/bin/sh
-#!/bin/sh
 cd ../models
 
 # Set the following variables
-GPU_ID=-1
+GPU_ID=0
 DETECTOR='yolov2'
 SPLIT='val'
 PROJECT_ROOT=/home/$USER/kv/bbox_refine
-SUPER_TYPE=ers_1000
+SUPER_TYPE=ers_400
 
 CUDA_VISIBLE_DEVICES=${GPU_ID} python baseline.py \
     --evaluate \
