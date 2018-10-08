@@ -33,6 +33,7 @@ class options(object):
         self.parser.add_argument('--ckpt_frq', type=int, default=10, help='Checkpoint frequency (in epochs)')
         self.parser.add_argument('--sample_frq', type=int, default=1, help='Sample images frequency (in epochs)')
         self.parser.add_argument('--display_frq', type=int, default=200, help='Display log after')
+        self.parser.add_argument('--verbosity', action='store_true', help='Generate debug log data')
         self.parser.add_argument('--base_lr', type=float, default=3e-4, help='Initial learning rate')
         self.parser.add_argument('--gamma', type=float, default=0.1, help='Drop lr by this factor after `lr_decay_frq`')
         self.parser.add_argument('--lr_start_epoch', type=int, default=400, help='No. of epochs to train with starting learning rate')
