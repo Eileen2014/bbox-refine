@@ -8,8 +8,8 @@ from chainercv.datasets.voc.voc_utils import voc_bbox_label_names
 from utils.common import get_tightest_bboxes
 
 class voc_loader:
-    def __init__(self, data_dir, split='val', super_root=None):
-        self.loader = VOCBboxDataset(data_dir=data_dir, split=split)
+    def __init__(self, data_dir, split='val', super_root=None, year='2007'):
+        self.loader = VOCBboxDataset(data_dir=data_dir, split=split, year=year)
         self.ids = self.loader.ids
         self.super_root = super_root
     

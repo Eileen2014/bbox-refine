@@ -32,6 +32,9 @@ class Baseline:
         self.project_root     = opts['project_root']
         self.super_root       = os.path.join(opts['project_root'], '..', opts['data_dir'], 'superpixels', opts['super_type'])
 
+        # please change me later
+        self.year             = '2007'
+
         self.detector = Detector(
             self.detector_name,
             self.n_classes,
@@ -39,7 +42,7 @@ class Baseline:
             self.opts['gpu_id']
             )
         self.visualizer = Visualize(opts['label_names'])
-        self.loader = voc_loader(data_dir=self.data_dir, split=self.split, super_root=self.super_root)
+        self.loader = voc_loader(data_dir=self.data_dir, split=self.split, super_root=self.super_root, year=self.year)
 
     def is_valid_box(self, bbox_mask):
         """ Checks if the box is valid
@@ -255,6 +258,60 @@ class Baseline:
         with open(join([self.logs_root, 'metrics.list']), 'wb') as f:
             pickle.dump(metrics, f)
 
+    def predict_from_file(self, detections_file, annotations_file):
+        metrics = {}
+
+        with open(detections_file, 'r') as dets:
+            dets = np.load(dets)
+
+        with open(annotations_file, 'r') as anns:
+            ress = np.load(anns)
+
+        print('evaluating a total of {} images'.format(len(ress)))
+        time_taken = []
+        box_align_time = []
+        begin_time = time.time()
+        total_size = len(ress)
+        invalid_count = 0
+        for idx in range(len(ress)):
+            # progress bar
+            done_l = (idx+1.0) / total_size
+            per_done = int(done_l * 30)
+            args = ['='*per_done, ' '*(30-per_done-1), done_l*100]
+            sys.stdout.write('\r')
+            sys.stdout.write('[{}>{}]{:.0f}%'.format(*args))
+            sys.stdout.flush()
+
+            # load images and ground truth stuff
+            img, bboxes, labels, contours, masks, boxes = self.loader.load_single(idx)
+
+            # use the detector and predict bounding boxes
+            start_time = time.time() 
+            p_bboxes, p_labels, p_scores = self.detector.predict([img])
+            p_bboxes = np.rint(p_bboxes[0])
+            time_taken.append(time.time()-start_time)
+
+            # box-alignment
+            start_time = time.time() 
+            final_bboxes, final_masks = self.box_alignment(img, p_bboxes, masks, boxes)
+            box_align_time.append(time.time()-start_time) 
+           
+            if len(final_bboxes) == 0 or len(final_masks) == 0:
+                invalid_count += 1
+                continue
+
+            # store the results in a file
+            metrics.update({'{}'.format(self.loader.ids[idx]): [p_bboxes, p_labels, p_scores, final_bboxes, bboxes, labels]})
+            img_file = os.path.join(self.opts['project_root'], 'logs', self.logs_root, 'qualitative', str(self.loader.ids[idx]))
+            self.visualizer.box_alignment(img, p_bboxes, final_bboxes, final_masks, contours, save=True, path=img_file)
+       
+        print('\nTotal time taken for detection per image: {:.3f}'.format(np.mean(time_taken)))
+        print('Total time taken for box alignment per image: {:.3f}'.format(np.mean(box_align_time)))
+        print('Total time elapsed: {:.3f}'.format(time.time()-begin_time))
+        print('Total invalid images encountered {:4d}/{:4d}'.format(invalid_count, total_size))
+        with open(join([self.logs_root, 'metrics.list']), 'wb') as f:
+            pickle.dump(metrics, f)
+
 if __name__ == '__main__':
     opts = options().parse(train_mode=False)
     req_dirs = [
@@ -268,6 +325,8 @@ if __name__ == '__main__':
         baseline.predict_single(img)
     elif opts['evaluate']:
         baseline.predict_all()
+    elif opts['evaluate_from_file']:
+        baseline.predict_from_file(opts['detections_file'], opts['annotations_file'])
     elif opts['benchmark']:
         pass
     else:
