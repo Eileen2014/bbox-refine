@@ -44,6 +44,11 @@ class options(object):
         self.parser.add_argument('--evaluate', action='store_true', help='Evaluate a model?')
         self.parser.add_argument('--benchmark', action='store_true', help='Benchmark a model?')
 
+        # Loading detections from file
+        self.parser.add_argument('--detections_file', action='store_false', help='Detections pickle file')
+        self.parser.add_argument('--annotations_file', action='store_false', help='Detections pickle file')
+        self.parser.add_argument('--evaluate_from_file', action='store_false', help='evaluate from file?')
+
     def update_opts(self):
         # Datasets
         self.opts.update({'datasets': ('voc', 'yto')})
