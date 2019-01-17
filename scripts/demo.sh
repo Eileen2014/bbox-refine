@@ -10,6 +10,7 @@ SUPER_TYPE=ers_1000
 
 CUDA_VISIBLE_DEVICES=${GPU_ID} python baseline.py \
     --demo \
+    --verbosity \
     --project_root ${PROJECT_ROOT} \
     --gpu_id ${GPU_ID} \
     --split ${SPLIT} \

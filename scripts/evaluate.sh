@@ -1,12 +1,21 @@
 #!/bin/sh
 cd ../models
 
-# Set the following variables
-GPU_ID=0
-DETECTOR='yolov2'
-SPLIT='val'
+GPU_ID=-1
 PROJECT_ROOT=/home/$USER/kv/bbox_refine
+SPLIT='val'
+
+# Set the following variables (this decides logs_root)
+DETECTOR='yolov2'
 SUPER_TYPE=ers_400
+
+# For VOC dataset
+DATASET='voc'
+DATA_DIR='datasets/VOC2012'
+
+# For YTO dataset
+DATASET='yto'
+DATA_DIR='datasets/YTOdevkit/YTO'
 
 CUDA_VISIBLE_DEVICES=${GPU_ID} python baseline.py \
     --evaluate \
@@ -14,4 +23,6 @@ CUDA_VISIBLE_DEVICES=${GPU_ID} python baseline.py \
     --gpu_id ${GPU_ID} \
     --split ${SPLIT} \
     --super_type ${SUPER_TYPE} \
-    --detector ${DETECTOR}
+    --detector ${DETECTOR} \
+    --dataset ${DATASET} \
+    --data_dir ${DATA_dIR}

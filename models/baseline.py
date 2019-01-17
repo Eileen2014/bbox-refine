@@ -1,9 +1,12 @@
 from models.detector import Detector
 from utils.visualizer import Visualize
 from utils.options import options
-from utils.voc_loader import voc_loader
 from utils.common import mkdirs
 from utils.common import join
+from utils.common import get_superpixels
+
+from utils.voc_loader import voc_loader
+from utils.yto_loader import yto_loader
 
 from chainercv.utils import read_image
 from chainercv.utils import mask_iou
@@ -24,11 +27,13 @@ class Baseline:
         self.n_classes        = opts['n_classes']
         self.pretrained_model = opts['pretrained_model']
         self.detector_name    = opts['detector']
+        self.dataset_name     = opts['dataset']
         self.threshold        = opts['threshold']
         self.data_dir         = os.path.join(opts['project_root'], '..', opts['data_dir'])
         self.split            = opts['split']
         self.super_type       = opts['super_type']
         self.logs_root        = opts['logs_root']
+        self.verbosity        = opts['verbosity']
         self.project_root     = opts['project_root']
         self.super_root       = os.path.join(opts['project_root'], '..', opts['data_dir'], 'superpixels', opts['super_type'])
 
@@ -42,7 +47,20 @@ class Baseline:
             self.opts['gpu_id']
             )
         self.visualizer = Visualize(opts['label_names'])
-        self.loader = voc_loader(data_dir=self.data_dir, split=self.split, super_root=self.super_root, year=self.year)
+        if self.dataset_name == 'voc':
+            self.loader = voc_loader(
+                data_dir=self.data_dir,
+                split=self.split,
+                super_root=self.super_root
+                )
+        elif self.dataset_name == 'yto':
+            self.loader = yto_loader(
+                data_dir=self.data_dir,
+                split=self.split,
+                super_root=self.super_root
+                )
+        else:
+            print('No such dataset exists')
 
     def is_valid_box(self, bbox_mask):
         """ Checks if the box is valid
@@ -93,43 +111,50 @@ class Baseline:
             _s_in, _s_st = self.SD_metric(img, box_mask, masks, stype=-1)
             if len(_s_in) == 0:
                 continue
-            _s_in = np.sum(np.array(_s_in), axis=0).astype(np.bool)
+            _s_in = np.sum(_s_in, axis=0).astype(np.bool)
             s_in.append(_s_in)
             s_st.append(_s_st) 
         return s_in, s_st
 
-    def predict_single(self, img):
-        bboxes, labels, scores = self.detector.predict([img])
-        self.visualizer(img, bboxes[0], labels[0], scores[0])
-
     def box_alignment(self, img, bboxes, masks, boxes):
         s_in, s_st = self.get_initial_sets(img, bboxes, masks, boxes)
-        
+
         if len(s_in) == 0 or len(s_st) == 0:
             return [], []
 
         s_st = self.rebase_sst(s_in, s_st, bboxes)
         final_boxes = []
         final_masks = []
+        added_superpixel_masks = []
         for bbox, sin, sst in zip(bboxes, s_in, s_st):
             s = sin
             if s.ndim == 0:
                 continue
-            proc = 0 
-            for sk in sst:
-                new_s = np.bitwise_or(s, sk)
-                iou_old = bbox_iou(mask_to_bbox(np.array([s])), np.array([bbox]))[0][0]
-                iou_new = bbox_iou(mask_to_bbox(np.array([new_s])), np.array([bbox]))[0][0]
+            assert len(sst) >= 1, "No straddling boxes are found"
+
+            proc = 0
+            new_superpixels = np.zeros_like(s)
+            new_s = np.bitwise_or(s, sst[0])
+            iou_old = bbox_iou(mask_to_bbox(np.array([s])), np.array([bbox]))[0][0]
+            iou_new = bbox_iou(mask_to_bbox(np.array([new_s])), np.array([bbox]))[0][0]
+            for sk in sst[1:]:
                 if iou_old > iou_new:
                     break
-                proc += 1
+                iou_old = iou_new
                 s = new_s
+                new_s = np.bitwise_or(s, sk)
+                iou_new = bbox_iou(mask_to_bbox(np.array([new_s])), np.array([bbox]))[0][0]
+                proc += 1
+                new_superpixels = np.bitwise_or(new_superpixels, sk)
             final_masks.append(s)
             final_boxes.append(mask_to_bbox(np.array([s]))[-1])
+            added_superpixel_masks.append(new_superpixels.astype(np.int32))
+            if self.verbosity:
+                print('No. of superpixels added: {:2d}'.format(proc))
         final_masks, final_boxes = np.array(final_masks), np.array(final_boxes) 
-        return final_boxes, final_masks
+        return final_boxes, final_masks, added_superpixel_masks
 
-    def multi_thresholding_superpixel_merging(self, 
+    def multi_thresholding_superpixel_merging(self, img,
             initial_boxes, aligned_boxes, aligned_masks,
             s_masks, s_boxes, threshold=None
             ):
@@ -141,17 +166,20 @@ class Baseline:
             initial_boxes: bboxes predicted from detector
             aligned_boxes: bboxes after bbox-alignment
             aligned_masks: masks  after bbox-alignment
+                           `aligned_boxes` are generated by enclosing these masks
             s_masks      : masks corresponding to superpixels
             s_boxes      : bounding boxes for the corresponding superpixels
             threshold    : straddling expansion threshold
         """
+        _, h, w = img.shape
         def get_thresholded_spixels(threshold, s_masks, a_bbox):
             """ generates the set of superpixels which have greater than `threshold`
                 overlap with the `a_bbox`
             """
             req_masks = []
+            box_mask = self.box_to_mask(a_bbox, (h, w))
             for mask in s_masks:
-                intersect = np.bitwise_and(a_bbox, mask).sum()
+                intersect = np.bitwise_and(box_mask, mask).sum()
                 ratio = intersect / np.count_nonzero(mask)
                 if ratio >= threshold:
                     req_masks.append(mask)
@@ -166,7 +194,7 @@ class Baseline:
                 req_superpixels = get_thresholded_spixels(threshold, s_masks, a_bbox)
                 super_segment = np.sum(req_superpixels, axis=0)
                 final_segment = np.bitwise_or(super_segment, a_mask)
-                final_bbox    = mask_to_bbox(np.array([final_segment]))
+                final_bbox    = mask_to_bbox(np.array([final_segment]))[0]
                 box_set.update({threshold: [final_segment, final_bbox]})
             final_set_.update({idx: box_set})
 
@@ -180,14 +208,51 @@ class Baseline:
         # nms
         for key, box_set in final_set_.items():
             segments, bboxes, scores = zip(*box_set.values())
+            segments, bboxes, scores = np.array(segments), np.array(bboxes), np.array(scores)
             idxs = nms(bboxes, thresh=0.9, score=scores)
             final_picks = [
-                segments[idxs],
-                bboxes[idxs],
-                scores[idxs]
+                segments[idxs][0],
+                bboxes[idxs][0],
+                scores[idxs][0]
             ]
             final_set_.update({key: final_picks})
         return final_set_
+
+    def predict_single(self, img_path, sup_path):
+
+        img = read_image(img_path)
+        contours, masks, boxes = get_superpixels(sup_path)
+
+        # use the detector and predict bounding boxes
+        p_bboxes, p_labels, p_scores = self.detector.predict([img])
+        p_bboxes = np.rint(p_bboxes[0])
+
+        # box-alignment
+        final_bboxes, final_masks, added_superpixel_masks = self.box_alignment(img, p_bboxes, masks, boxes)
+
+        if len(final_bboxes) == 0 or len(final_masks) == 0:
+            print('No bboxes predicted')
+
+
+        final_set = self.multi_thresholding_superpixel_merging(img, 
+            p_bboxes, final_bboxes, final_masks, masks, boxes)
+        f_segments, f_bboxes, f_scores = zip(*final_set.values())
+        f_segments, f_bboxes, f_scores = np.array(f_segments), np.array(f_bboxes), np.array(f_scores)
+
+        if self.verbosity:
+            print('Predicted bboxes:')
+            print(p_bboxes)
+            print('After bbox-alignment:')
+            print(final_bboxes)
+            print('After straddling expansion:')
+            print(f_bboxes)
+
+        img_file = os.path.join(sup_path.replace('.csv', ''))
+        self.visualizer.mtsm(
+            img, p_bboxes, 
+            final_bboxes, final_masks, contours, 
+            f_bboxes, f_segments,
+            save=True, path=img_file)
 
     def predict(self, inputs=None):
         if inputs is None:
@@ -214,12 +279,11 @@ class Baseline:
         print('evaluating a total of {} images'.format(self.loader.len()))
         time_taken = []
         box_align_time = []
+        straddling_time = []
         begin_time = time.time()
-        # total_size = 10
         total_size = self.loader.len()
         invalid_count = 0
         for idx in range(self.loader.len()):
-        # for idx in range(10):
             # progress bar
             done_l = (idx+1.0) / total_size
             per_done = int(done_l * 30)
@@ -241,18 +305,32 @@ class Baseline:
             start_time = time.time() 
             final_bboxes, final_masks = self.box_alignment(img, p_bboxes, masks, boxes)
             box_align_time.append(time.time()-start_time) 
-           
+
+            # Straddling expansion
+            start_time = time.time() 
+            final_set = self.multi_thresholding_superpixel_merging(p_bboxes, final_bboxes,
+                final_masks, masks, boxes)
+            straddling_time.append(time.time()-start_time) 
+            mtsm_masks, mtsm_bboxes, _ = zip(*final_set.values())
+
             if len(final_bboxes) == 0 or len(final_masks) == 0:
                 invalid_count += 1
                 continue
 
             # store the results in a file
-            metrics.update({'{}'.format(self.loader.ids[idx]): [p_bboxes, p_labels, p_scores, final_bboxes, bboxes, labels]})
+            metrics.update({'{}'.format(self.loader.ids[idx]): [p_bboxes, p_labels, p_scores, final_bboxes, bboxes, labels, mtsm_bboxes]})
             img_file = os.path.join(self.opts['project_root'], 'logs', self.logs_root, 'qualitative', str(self.loader.ids[idx]))
-            self.visualizer.box_alignment(img, p_bboxes, final_bboxes, final_masks, contours, save=True, path=img_file)
-       
+
+            self.visualizer.mtsm(img, 
+                p_bboxes, 
+                final_bboxes, final_masks, contours, 
+                mtsm_bboxes, mtsm_masks,
+                save=True, path=img_file
+                )
+
         print('\nTotal time taken for detection per image: {:.3f}'.format(np.mean(time_taken)))
         print('Total time taken for box alignment per image: {:.3f}'.format(np.mean(box_align_time)))
+        print('Total time taken for straddling expansion per image: {:.3f}'.format(np.mean(straddling_time)))
         print('Total time elapsed: {:.3f}'.format(time.time()-begin_time))
         print('Total invalid images encountered {:4d}/{:4d}'.format(invalid_count, total_size))
         with open(join([self.logs_root, 'metrics.list']), 'wb') as f:
@@ -321,8 +399,9 @@ if __name__ == '__main__':
     baseline = Baseline(opts)
 
     if opts['demo']:
-        img = read_image('../utils/imgs/sample.jpg')
-        baseline.predict_single(img)
+        img_path = '../utils/imgs/100_spixels/persons1.jpg'
+        sup_path = '../utils/imgs/100_spixels/persons1.csv'
+        baseline.predict_single(img_path, sup_path)
     elif opts['evaluate']:
         baseline.predict_all()
     elif opts['evaluate_from_file']:

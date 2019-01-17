@@ -7,7 +7,7 @@ __pycache__/
 # Local logs/files
 logs/**
 test/**
-
+utils/imgs/**
 # C extensions
 *.so
 

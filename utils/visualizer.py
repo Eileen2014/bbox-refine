@@ -1,6 +1,11 @@
-import matplotlib.pyplot as plt
+import matplotlib
 
+matplotlib.use('Agg')
+
+import numpy as np
+import matplotlib.pyplot as plt
 from chainercv.visualizations import vis_bbox
+from chainercv.visualizations import vis_image
 from chainercv.datasets import voc_bbox_label_names
 
 class Visualize:
@@ -32,7 +37,7 @@ class Visualize:
                 )
 
     def box_alignment(self, img, old_boxes, new_boxes, Spixels,
-                      contours, save=True, path=None
+                      contours, new_superset, save=True, path=None
                       ):
         """ Visualize the change in the bboxes after box alignment
 
@@ -44,22 +49,28 @@ class Visualize:
         """
         # fig = plt.figure(figsize=(16, 7))
         fig = plt.figure()
-        ax1 = fig.add_subplot(131)
+        ax1 = fig.add_subplot(221)
         plt.xticks([])
         plt.yticks([])
         plt.title('Superpixels')
         plt.imshow(contours)
 
-        ax1 = fig.add_subplot(132)
+        ax1 = fig.add_subplot(222)
         plt.xticks([])
         plt.yticks([])
         plt.title('Original box')
         vis_bbox(img, old_boxes, ax=ax1, linewidth=1.0)
 
-        ax2 = fig.add_subplot(133)
+        ax1 = fig.add_subplot(223)
         plt.xticks([])
         plt.yticks([])
-        plt.title('After box-alignment')
+        plt.title('Superpixels added')
+        plt.imshow(new_superset[0])
+
+        ax2 = fig.add_subplot(224)
+        plt.xticks([])
+        plt.yticks([])
+        plt.title('After box-align')
         vis_bbox(img, new_boxes, ax=ax2, linewidth=1.0)
         for spixel in Spixels:
             plt.imshow(spixel, cmap='gray', alpha=0.5, interpolation='none')
@@ -86,33 +97,39 @@ class Visualize:
         """
         # fig = plt.figure(figsize=(16, 7))
         fig = plt.figure()
-        ax1 = fig.add_subplot(141)
+        ax1 = fig.add_subplot(221)
         plt.xticks([])
         plt.yticks([])
-        plt.title('Superpixels')
-        plt.imshow(contours)
+        plt.title('Image')
+        vis_image(img, ax=ax1)
 
-        ax2 = fig.add_subplot(142)
+        ax2 = fig.add_subplot(222)
         plt.xticks([])
         plt.yticks([])
         plt.title('Original box')
         vis_bbox(img, old_boxes, ax=ax2, linewidth=1.0)
 
-        ax3 = fig.add_subplot(143)
+        ax3 = fig.add_subplot(223)
         plt.xticks([])
         plt.yticks([])
         plt.title('After box-alignment')
         vis_bbox(img, new_boxes, ax=ax3, linewidth=1.0)
-        for spixel in Spixels:
-            plt.imshow(spixel, cmap='gray', alpha=0.5, interpolation='none')
+        spixel_ = Spixels[0]
+        for spixel in Spixels[1:]:
+            spixel_ = np.bitwise_or(spixel_, spixel)
+        spixel_[spixel_ > 0] = 1
+        plt.imshow(spixel_, cmap='gray', alpha=0.5, interpolation='none')
 
-        ax4 = fig.add_subplot(144)
+        ax4 = fig.add_subplot(224)
         plt.xticks([])
         plt.yticks([])
         plt.title('After straddling expansion')
         vis_bbox(img, s_boxes, ax=ax4, linewidth=1.0)
+        spixel_ = s_superpixels[0]
         for spixel in s_superpixels:
-            plt.imshow(spixel, cmap='gray', alpha=0.5, interpolation='none')
+            spixel_ = np.bitwise_or(spixel_, spixel)
+        spixel_[spixel_ > 0] = 1
+        plt.imshow(spixel_, cmap='gray', alpha=0.5, interpolation='none')
 
         if save:
             if path is None:

@@ -1,6 +1,7 @@
 import os
 import json
 import numpy as np
+import pandas as pd
 from scipy import ndimage
 
 def mkdir(path):
@@ -61,3 +62,19 @@ def get_tightest_bboxes(masks):
             boxes[idx] = get_tightest_bbox(mask)
     return boxes
 
+def fix_superpixels(contours):
+    H, W = contours.shape
+    new_contours = np.empty((H+1, W), dtype=contours.dtype)
+    new_contours[:-1, :] = contours
+    new_contours[-1, :] = contours[-1]
+    return new_contours
+
+def get_superpixels(sup_path):
+    contours = pd.read_csv(sup_path).values
+    contours = fix_superpixels(contours)
+    min_region = contours.min()
+    max_region = contours.max()
+    masks = np.array([contours == idx for idx in range(min_region, max_region+1, 1)])
+    boxes = get_tightest_bboxes(masks)
+
+    return contours, masks, boxes
