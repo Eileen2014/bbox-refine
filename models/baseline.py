@@ -117,7 +117,7 @@ class Baseline:
         s_in, s_st = self.get_initial_sets(img, bboxes, masks, boxes)
 
         if len(s_in) == 0 or len(s_st) == 0:
-            return [], []
+            return [], [], []
 
         s_st = self.rebase_sst(s_in, s_st, bboxes)
         final_boxes = []
@@ -300,19 +300,21 @@ class Baseline:
 
             # box-alignment
             start_time = time.time() 
-            final_bboxes, final_masks = self.box_alignment(img, p_bboxes, masks, boxes)
+            final_bboxes, final_masks, _ = self.box_alignment(img, p_bboxes, masks, boxes)
             box_align_time.append(time.time()-start_time) 
+
+            # Just a precaution
+            if len(final_bboxes) == 0 or len(final_masks) == 0:
+                invalid_count += 1
+                continue
 
             # Straddling expansion
             start_time = time.time() 
-            final_set = self.multi_thresholding_superpixel_merging(p_bboxes, final_bboxes,
+            final_set = self.multi_thresholding_superpixel_merging(img, p_bboxes, final_bboxes,
                 final_masks, masks, boxes)
             straddling_time.append(time.time()-start_time) 
             mtsm_masks, mtsm_bboxes, _ = zip(*final_set.values())
 
-            if len(final_bboxes) == 0 or len(final_masks) == 0:
-                invalid_count += 1
-                continue
 
             # store the results in a file
             metrics.update({'{}'.format(self.loader.ids[idx]): [p_bboxes, p_labels, p_scores, final_bboxes, bboxes, labels, mtsm_bboxes]})

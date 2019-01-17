@@ -9,9 +9,9 @@ SPLIT='val'
 DETECTOR='yolov2'
 SUPER_TYPE=ers_400
 
-# For VOC dataset
-DATASET='voc'
-DATA_DIR='datasets/VOC2012'
+# # For VOC dataset
+# DATASET='voc'
+# DATA_DIR='datasets/VOC2012'
 
 # For YTO dataset
 DATASET='yto'
@@ -25,4 +25,4 @@ CUDA_VISIBLE_DEVICES=${GPU_ID} python baseline.py \
     --super_type ${SUPER_TYPE} \
     --detector ${DETECTOR} \
     --dataset ${DATASET} \
-    --data_dir ${DATA_dIR}
+    --data_dir ${DATA_DIR}

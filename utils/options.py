@@ -46,14 +46,15 @@ class options(object):
 
     def update_opts(self):
         # Datasets
-        self.opts.update({'datasets': ('voc', )})
+        self.opts.update({'datasets': ('voc', 'yto')})
 
         # Detectors
         self.opts.update({'detectors': ('ssd', 'yolov2', 'yolov3', 'ssd300', 'ssd512', 'faster_rcnn')})
 
         # Update parameters specific to dataset
         names_map = {
-            'voc': voc_names
+            'voc': voc_names,
+            'yto': voc_names
         }
 
         assert self.opts['dataset'] in self.opts['datasets'], "{} dataset doesn't exist".format(self.opts['dataset'])
@@ -63,7 +64,7 @@ class options(object):
         self.opts.update({'n_classes': len(self.opts['label_names'])})
 
         # Some directories
-        logs_root = join([self.opts['project_root'], 'logs', 'Detector-{}_SuperType-{}'.format(self.opts['detector'], self.opts['super_type'])])
+        logs_root = join([self.opts['project_root'], 'logs', 'Detector-{}_SuperType-{}_yto'.format(self.opts['detector'], self.opts['super_type'])])
         self.opts.update({'logs_root': logs_root})
 
     def parse(self, train_mode=False):

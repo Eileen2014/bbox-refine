@@ -24,11 +24,11 @@ class Evaulate:
         sstr = ''
         sstr += 'IoU thresh: {:.2f}'.format(iou_thresh)+'\n'
         sstr += formatter1.format('Idx', 'Class', 'Detector AP', 'Box-align AP', 'Straddling AP')+'\n'
-        sstr += '-'*65+'\n'
+        sstr += '-'*85+'\n'
         for idx, (class_name, det_AP, box_AP, std_AP) in enumerate(zip(lb_names, det_stats['ap'], box_align_stats['ap'], straddling_stats['ap'])):
             sstr += formatter2.format(idx, class_name, det_AP, box_AP, std_AP)+'\n'
         sstr += 'Overall Stats: Detector mAP: {:.2f}, Box-align mAP: {:.2f}, Straddling mAP: {:.2f}'.format(det_stats['map'], box_align_stats['map'], straddling_stats['map'])+'\n'
-        sstr += '-'*65+'\n'
+        sstr += '-'*85+'\n'
         print(sstr)
         return sstr
 
@@ -46,7 +46,7 @@ class Evaulate:
             g_l.append(gl)
             p_l.append(pl[0])
             p_s.append(pl[0])
-            m_b.append(mb)
+            m_b.append(np.rint(mb))
         return [p_b, p_l, p_s, r_b, g_b, g_l, m_b]
 
     def evaulate_single_model(self, logsdir):
@@ -78,7 +78,7 @@ class Evaulate:
                 iou_thresh=iou_thresh
                 )
 
-            sstr = self.pprint(detector_stats, box_align_stats, straddling_stats, iou_thresh)
+            sstr = self.pprint(detector_stats, bbox_align_stats, straddling_stats, iou_thresh)
             with open(join([logsdir,  'metrics_{:.2f}.table'.format(iou_thresh)]), 'w') as f:
                 f.write(sstr)
 

@@ -24,4 +24,4 @@ CUDA_VISIBLE_DEVICES=${GPU_ID} python metrics.py\
     --super_type ${SUPER_TYPE} \
     --detector ${DETECTOR} \
     --dataset ${DATASET} \
-    --data_dir ${DATA_dIR}
+    --data_dir ${DATA_DIR}

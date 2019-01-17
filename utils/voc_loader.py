@@ -38,8 +38,17 @@ class voc_loader:
 
     def load_single(self, idx):
         img, bbox, labels = self.loader.get_example(idx)
-        contours, masks, boxes = self.get_superpixels(idx)
-        return (img, bbox, labels, contours, masks, boxes)
+        if self.super_root is not None:
+            contours, masks, boxes = self.get_superpixels(idx)
+            return (img, bbox, labels, contours, masks, boxes)
+        return (img, bbox, labels)
 
     def load_batch(self, start_idx, end_idx):
-        pass
+        imgs, bboxes, labels = [], [], []
+        for idx in range(start_idx, end_idx, 1):
+            img, bbox, label = self.loader.get_example(idx)
+            
+            imgs.append(img)
+            bboxes.append(bbox)
+            labels.append(label)
+        return imgs, bboxes, labels

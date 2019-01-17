@@ -31,12 +31,6 @@ class yto_loader:
         self.super_root = super_root
         self.use_difficult = True
 
-        self.add_getter('img', self._get_image)
-        self.add_getter(('bbox', 'label', 'difficult'), self._get_annotations)
-
-        if not return_difficult:
-            self.keys = ('img', 'bbox', 'label')
-
     def len(self):
         return len(self.ids)
 
@@ -69,9 +63,7 @@ class yto_loader:
             label.append(voc_utils.voc_bbox_label_names.index(name))
         bbox = np.stack(bbox).astype(np.float32)
         label = np.stack(label).astype(np.int32)
-        # When `use_difficult==False`, all elements in `difficult` are False.
-        difficult = np.array(difficult, dtype=np.bool)
-        return bbox, label, difficult
+        return bbox, label
 
     def fix_superpixels(self, contours):
         """ This is just a temporary fix

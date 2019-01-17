@@ -1,8 +1,8 @@
 #!/bin/sh
 
-INPUT_DIR=/home/avisek/kv/datasets/VOC2012/JPEGImages
+INPUT_DIR=/home/avisek/kv/datasets/YTOdevkit/YTO/JP_bb1000
 SUPERPIXELS=1000
-OUTPUT_DIR=/home/avisek/kv/datasets/VOC2012/superpixels/ers_400
+OUTPUT_DIR=/home/avisek/kv/datasets/YTOdevkit/YTO/superpixels/ers_$SUPERPIXELS
 mkdir -p ${OUTPUT_DIR}
 
 cd ../../superpixels-revisited
